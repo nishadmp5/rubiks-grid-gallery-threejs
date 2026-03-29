@@ -15,15 +15,17 @@ interface SingleCubeProps {
   faceTextures: (THREE.Texture | null)[];
   onPulse: () => void;
   cubeIndex: number;
+  onFaceClick?: (cubeIndex: number, faceIndex: number) => void;
 }
 
 // Forward Ref is crucial here to give the Parent Physics Engine access to the THREE.Group
 // React.memo is used to prevent unnecessary re-renders when parent state changes but props don't.
 const SingleCubeComponent = forwardRef<THREE.Group, SingleCubeProps>(
-  ({ textures, faceTextures, onPulse, cubeIndex }, ref) => {
+  ({ textures, faceTextures, onPulse, cubeIndex, onFaceClick }, ref) => {
     const { handlers } = useCubeInteraction(
       onPulse,
-      cubeIndex
+      cubeIndex,
+      onFaceClick
     );
 
     const createInnerMtrlProps = (index: number) => {

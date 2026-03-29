@@ -10,9 +10,10 @@ import { useMinWidthLayout } from "@/hooks/useMinWidthLayout";
 interface DragRotatorProps {
   children: React.ReactNode;
   intensityRef: React.RefObject<number>;
+  disabled?: boolean;
 }
 
-export const DragRotator = ({ children, intensityRef }: DragRotatorProps) => {
+export const DragRotator = ({ children, intensityRef, disabled = false }: DragRotatorProps) => {
   // Use the custom hook
   const { groupRef, handlers } = useDragRotation(intensityRef);
   const { viewport } = useThree();
@@ -56,7 +57,7 @@ export const DragRotator = ({ children, intensityRef }: DragRotatorProps) => {
       {/* Hit Plane */}
       {/* Invisible plane to capture pointer events for rotation. */}
       {/* Needs to be large enough to cover the interaction area. */}
-      <mesh {...handlers} {...planeMeshProps}>
+      <mesh {...(!disabled ? handlers : {})} {...planeMeshProps}>
         <meshBasicMaterial {...planeMaterialProps} />
       </mesh>
 

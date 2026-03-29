@@ -1,12 +1,19 @@
 "use client";
 
-import React, { useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { DragRotator } from "./DragRotator";
+import { FaceExpansionOverlay } from "./FaceExpansionOverlay";
 import { SingleCube } from "./SingleCube";
 import { useCentralizedPhysics } from "./hooks/useCentralizedPhysics";
 import { useCubeResources } from "./hooks/useCubeResources";
 import { useGalleryTextures, GALLERY_IMAGE_COUNT } from "./hooks/useGalleryTextures";
+
+interface ActiveExpansion {
+  faceIndex: number;
+  texture: THREE.Texture;
+  cubePosition: [number, number, number];
+}
 
 const RubiksGrid: React.FC = () => {
   const spacing = 2.25;
@@ -16,6 +23,7 @@ const RubiksGrid: React.FC = () => {
   const textures = useCubeResources();
   const galleryTextures = useGalleryTextures();
   const cubesRefs = useRef<THREE.Group[]>([]);
+  const [activeExpansion, setActiveExpansion] = useState<ActiveExpansion | null>(null);
 
   // --- 1. Grid Generation ---
   // Memoize positions to avoid recalculating on every render.
@@ -47,8 +55,24 @@ const RubiksGrid: React.FC = () => {
     [triggerPulse]
   );
 
+  // Fired when a cube face with an image is clicked.
+  // Computes whether the face is an outer (image-bearing) face and sets expansion state.
+  const handleFaceClick = useCallback(
+    (cubeIndex: number, faceIndex: number) => {
+      const i = cubeIndex;
+      const gx = Math.floor(i / 9) - 1;
+      const gy = Math.floor((i % 9) / 3) - 1;
+      const gz = (i % 3) - 1;
+      const isOuter = [gx === 1, gx === -1, gy === 1, gy === -1, gz === 1, gz === -1];
+      if (!isOuter[faceIndex]) return;
+      const texture = galleryTextures[(i * 6 + faceIndex) % GALLERY_IMAGE_COUNT];
+      setActiveExpansion({ faceIndex, texture, cubePosition: positions[i] });
+    },
+    [positions, galleryTextures]
+  );
+
   return (
-    <DragRotator intensityRef={intensityRef}>
+    <DragRotator intensityRef={intensityRef} disabled={activeExpansion !== null}>
       {positions.map((pos, i) => {
         // Derive grid coordinates from index (loop order: x → y → z, each -1..1)
         const gx = Math.floor(i / 9) - 1;
@@ -78,12 +102,23 @@ const RubiksGrid: React.FC = () => {
             faceTextures={faceTextures}
             onPulse={() => handlePulse(i)}
             cubeIndex={i}
+            onFaceClick={handleFaceClick}
             ref={(el) => {
               if (el) cubesRefs.current[i] = el;
             }}
           />
         );
       })}
+
+      {activeExpansion && (
+        <FaceExpansionOverlay
+          key={`${activeExpansion.cubePosition[0]}-${activeExpansion.cubePosition[1]}-${activeExpansion.cubePosition[2]}-${activeExpansion.faceIndex}`}
+          faceIndex={activeExpansion.faceIndex}
+          texture={activeExpansion.texture}
+          cubePosition={activeExpansion.cubePosition}
+          onDismiss={() => setActiveExpansion(null)}
+        />
+      )}
     </DragRotator>
   );
 };

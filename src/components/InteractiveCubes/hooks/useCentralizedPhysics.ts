@@ -109,10 +109,6 @@ export const useCentralizedPhysics = (
 
       tempVec.set(0, 0, 0);
 
-      if (!isCenter) {
-        applyDragForce(tempVec, tempOutward, expansion);
-        applyIdleWave(tempVec, tempOutward, x, CONFIG.IDLE_AMPLITUDE, state);
-      }
 
       applyIntroRipple(tempVec, tempOutward, elapsed, dist);
 

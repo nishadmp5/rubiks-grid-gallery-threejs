@@ -3,7 +3,11 @@ import { ThreeEvent } from "@react-three/fiber";
 
 import { getInitialFaces } from "../config/patterns";
 
-export const useCubeInteraction = (onPulse: () => void, cubeIndex: number) => {
+export const useCubeInteraction = (
+  onPulse: () => void,
+  cubeIndex: number,
+  onFaceClick?: (cubeIndex: number, faceIndex: number) => void
+) => {
   /**
    * State to track which face of the cube is currently being hovered.
    * Returns the material index (0-5) or null if not hovered.
@@ -62,9 +66,10 @@ export const useCubeInteraction = (onPulse: () => void, cubeIndex: number) => {
           newState[index] = !newState[index];
           return newState;
         });
+        onFaceClick?.(cubeIndex, index);
       }
     },
-    [onPulse]
+    [onPulse, cubeIndex, onFaceClick]
   );
 
   return {
