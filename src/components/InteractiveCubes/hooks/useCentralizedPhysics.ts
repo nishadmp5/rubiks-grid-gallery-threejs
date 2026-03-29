@@ -13,7 +13,6 @@ export const useCentralizedPhysics = (
   const tempTarget = new THREE.Vector3();
   const tempOutward = new THREE.Vector3();
 
-  const startTime = useRef<number | null>(null);
   const scalesRef = useRef<number[]>(new Array(positions.length).fill(1));
 
   const triggerPulse = useCallback((index: number) => {
@@ -45,20 +44,6 @@ export const useCentralizedPhysics = (
     vec.addScaledVector(outward, idleOffset);
   };
 
-  const applyIntroRipple = (
-    vec: THREE.Vector3,
-    outward: THREE.Vector3,
-    elapsed: number,
-    dist: number
-  ) => {
-    const introTime = elapsed - dist * CONFIG.INTRO_DELAY_FACTOR;
-    const introRad = introTime * CONFIG.INTRO_SPEED;
-
-    if (introRad > 0 && introRad < Math.PI) {
-      vec.addScaledVector(outward, Math.sin(introRad) * CONFIG.INTRO_AMPLITUDE);
-    }
-  };
-
   const updateScale = (
     group: THREE.Group,
     index: number,
@@ -85,9 +70,6 @@ export const useCentralizedPhysics = (
   // ---------------------------------------------------------
 
   useFrame((state, delta) => {
-    startTime.current ??= state.clock.elapsedTime;
-    const elapsed = state.clock.elapsedTime - startTime.current;
-
     const dragFactor = Math.min(intensityRef.current, 5);
     const expansion = Math.min(
       dragFactor * CONFIG.DRAG_SENSITIVITY,
@@ -101,18 +83,8 @@ export const useCentralizedPhysics = (
       const [x, y, z] = positions[i];
       tempTarget.set(x, y, z);
 
-      const isCenter = Math.abs(x) < 0.1 && Math.abs(y) < 0.1 && Math.abs(z) < 0.1;
-      const dist = tempTarget.length();
-
       tempOutward.copy(tempTarget).normalize();
       if (tempOutward.lengthSq() < 0.001) tempOutward.set(0, 1, 0);
-
-      tempVec.set(0, 0, 0);
-
-
-      applyIntroRipple(tempVec, tempOutward, elapsed, dist);
-
-      tempTarget.add(tempVec);
       group.position.lerp(tempTarget, 0.1);
 
       updateScale(group, i, delta);

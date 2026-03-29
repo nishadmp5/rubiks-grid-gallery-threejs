@@ -35,6 +35,14 @@ const SingleCubeComponent = forwardRef<THREE.Group, SingleCubeProps>(
         : { attach: `material-${index}`, color: "#111111", side: THREE.FrontSide };
     };
 
+    // Back-face materials: image at 40% opacity from inside, invisible for non-image faces
+    const createBackFaceMtrlProps = (index: number) => {
+      const tex = faceTextures[index];
+      return tex
+        ? { attach: `material-${index}`, map: tex, side: THREE.BackSide, transparent: true, opacity: 0.4 }
+        : { attach: `material-${index}`, side: THREE.BackSide, transparent: true, opacity: 0 };
+    };
+
      const maskMeshProps = useMemo(() => ({
         scale: 0.99,
         geometry: SHARED_BOX_GEOMETRY,
@@ -79,6 +87,14 @@ const SingleCubeComponent = forwardRef<THREE.Group, SingleCubeProps>(
               <meshBasicMaterial key={`face-${id}`} {...createInnerMtrlProps(index)} />
             );
           })}
+        </mesh>
+
+        {/* Back-face mesh: shows image faces at 40% opacity when viewed from inside. */}
+        {/* Scale 0.985 puts it just inside the mask (0.99), so its depth wins from inside. */}
+        <mesh scale={0.985} geometry={SHARED_BOX_GEOMETRY} renderOrder={1}>
+          {FACE_IDS.map((id, index) => (
+            <meshBasicMaterial key={`backface-${id}`} {...createBackFaceMtrlProps(index)} />
+          ))}
         </mesh>
       </group>
     );

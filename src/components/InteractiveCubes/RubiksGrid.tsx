@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { DragRotator } from "./DragRotator";
 import { FaceExpansionOverlay } from "./FaceExpansionOverlay";
@@ -9,25 +9,30 @@ import { useCentralizedPhysics } from "./hooks/useCentralizedPhysics";
 import { useCubeResources } from "./hooks/useCubeResources";
 import { useGalleryTextures, GALLERY_IMAGE_COUNT } from "./hooks/useGalleryTextures";
 
-interface ActiveExpansion {
+export interface RubiksGridHandle {
+  dismissAll: () => void;
+}
+
+interface ExpansionItem {
+  id: number;
   faceIndex: number;
   texture: THREE.Texture;
   cubePosition: [number, number, number];
+  dismissed: boolean;
 }
 
-const RubiksGrid: React.FC = () => {
-  const spacing = 2.25;
+const RubiksGridComponent = forwardRef<RubiksGridHandle, object>((_, ref) => {
+  const spacing = 2.0;
   const gridSize = 1;
 
   const intensityRef = useRef(0);
   const textures = useCubeResources();
   const galleryTextures = useGalleryTextures();
   const cubesRefs = useRef<THREE.Group[]>([]);
-  const [activeExpansion, setActiveExpansion] = useState<ActiveExpansion | null>(null);
+  const [expansions, setExpansions] = useState<ExpansionItem[]>([]);
+  const idCounter = useRef(0);
 
   // --- 1. Grid Generation ---
-  // Memoize positions to avoid recalculating on every render.
-  // Creates a 3x3x3 grid centered at (0,0,0).
   const positions = useMemo(() => {
     const pos: [number, number, number][] = [];
     for (let x = -gridSize; x <= gridSize; x++) {
@@ -41,22 +46,28 @@ const RubiksGrid: React.FC = () => {
   }, [spacing]);
 
   // --- 2. Physics Engine ---
-  // Connects the visual cubes (via refs) to the physics logic (position/scale updates).
   const { triggerPulse } = useCentralizedPhysics(
     cubesRefs,
     positions,
     intensityRef
   );
 
-  const handlePulse = React.useCallback(
-    (index: number) => {
-      triggerPulse(index);
-    },
+  const handlePulse = useCallback(
+    (index: number) => { triggerPulse(index); },
     [triggerPulse]
   );
 
+  // Dismiss all open overlays (used when clicking outside the grid).
+  const dismissAll = useCallback(() => {
+    setExpansions(prev =>
+      prev.length === 0 ? prev : prev.map(e => ({ ...e, dismissed: true }))
+    );
+  }, []);
+
+  useImperativeHandle(ref, () => ({ dismissAll }), [dismissAll]);
+
   // Fired when a cube face with an image is clicked.
-  // Computes whether the face is an outer (image-bearing) face and sets expansion state.
+  // Marks any existing expansion as dismissed and opens the new face.
   const handleFaceClick = useCallback(
     (cubeIndex: number, faceIndex: number) => {
       const i = cubeIndex;
@@ -66,27 +77,34 @@ const RubiksGrid: React.FC = () => {
       const isOuter = [gx === 1, gx === -1, gy === 1, gy === -1, gz === 1, gz === -1];
       if (!isOuter[faceIndex]) return;
       const texture = galleryTextures[(i * 6 + faceIndex) % GALLERY_IMAGE_COUNT];
-      setActiveExpansion({ faceIndex, texture, cubePosition: positions[i] });
+      const id = ++idCounter.current;
+      setExpansions(prev => [
+        ...prev.map(e => ({ ...e, dismissed: true })),
+        { id, faceIndex, texture, cubePosition: positions[i], dismissed: false },
+      ]);
     },
     [positions, galleryTextures]
   );
 
+  const handleDismiss = useCallback((id: number) => {
+    setExpansions(prev => prev.filter(e => e.id !== id));
+  }, []);
+
   return (
-    <DragRotator intensityRef={intensityRef} disabled={activeExpansion !== null}>
+    // Drag rotation is always enabled — never disabled by expansion state.
+    <DragRotator intensityRef={intensityRef}>
       {positions.map((pos, i) => {
-        // Derive grid coordinates from index (loop order: x → y → z, each -1..1)
         const gx = Math.floor(i / 9) - 1;
         const gy = Math.floor((i % 9) / 3) - 1;
         const gz = (i % 3) - 1;
 
-        // Three.js BoxGeometry material slots: 0=+x, 1=-x, 2=+y, 3=-y, 4=+z, 5=-z
         const isOuter = [
-          gx === 1,   // +x
-          gx === -1,  // -x
-          gy === 1,   // +y
-          gy === -1,  // -y
-          gz === 1,   // +z
-          gz === -1,  // -z
+          gx === 1,
+          gx === -1,
+          gy === 1,
+          gy === -1,
+          gz === 1,
+          gz === -1,
         ];
 
         const faceTextures = [0, 1, 2, 3, 4, 5].map((faceIndex) =>
@@ -104,23 +122,29 @@ const RubiksGrid: React.FC = () => {
             cubeIndex={i}
             onFaceClick={handleFaceClick}
             ref={(el) => {
-              if (el) cubesRefs.current[i] = el;
+              if (el) {
+                cubesRefs.current[i] = el;
+                el.position.set(pos[0], pos[1], pos[2]);
+              }
             }}
           />
         );
       })}
 
-      {activeExpansion && (
+      {expansions.map(item => (
         <FaceExpansionOverlay
-          key={`${activeExpansion.cubePosition[0]}-${activeExpansion.cubePosition[1]}-${activeExpansion.cubePosition[2]}-${activeExpansion.faceIndex}`}
-          faceIndex={activeExpansion.faceIndex}
-          texture={activeExpansion.texture}
-          cubePosition={activeExpansion.cubePosition}
-          onDismiss={() => setActiveExpansion(null)}
+          key={item.id}
+          faceIndex={item.faceIndex}
+          texture={item.texture}
+          cubePosition={item.cubePosition}
+          dismissed={item.dismissed}
+          onDismiss={() => handleDismiss(item.id)}
         />
-      )}
+      ))}
     </DragRotator>
   );
-};
+});
 
-export default React.memo(RubiksGrid);
+RubiksGridComponent.displayName = "RubiksGrid";
+
+export default React.memo(RubiksGridComponent);

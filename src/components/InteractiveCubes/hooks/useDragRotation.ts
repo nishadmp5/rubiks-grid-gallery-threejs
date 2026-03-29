@@ -1,14 +1,13 @@
 import { useRef } from "react";
 import * as THREE from "three";
 import { useFrame, ThreeEvent } from "@react-three/fiber";
-import { CONFIG, INITIAL_ROTATION } from "../config/constants";
+import { CONFIG } from "../config/constants";
 
 export const useDragRotation = (intensityRef: React.RefObject<number>) => {
   const groupRef = useRef<THREE.Group>(null!);
   const isDragging = useRef(false);
   const previousPointer = useRef({ x: 0, y: 0 });
   const velocity = useRef({ x: 0, y: 0 });
-  const lastInteractionTime = useRef(0);
 
   // --- Event Handlers ---
 
@@ -53,7 +52,7 @@ export const useDragRotation = (intensityRef: React.RefObject<number>) => {
 
   // --- Animation Loop ---
   // Handles rotation physics, inertia, and auto-reset.
-  useFrame((state, delta) => {
+  useFrame((_state, delta) => {
     if (!groupRef.current) return;
 
     // 1. Apply Velocity (Inertia)
@@ -76,38 +75,6 @@ export const useDragRotation = (intensityRef: React.RefObject<number>) => {
       speed * 20,
       0.1
     );
-
-    // 4. Auto-Reset Logic
-    // Smoothly rotates the cube back to its initial position when idle
-    if (isDragging.current) {
-      lastInteractionTime.current = state.clock.elapsedTime;
-    } else {
-      const timeSinceInteraction =
-        state.clock.elapsedTime - lastInteractionTime.current;
-
-      if (timeSinceInteraction > CONFIG.RESET_DELAY) {
-        const simplifyAngle = (angle: number) => angle % (Math.PI * 2);
-
-        // Lerp each axis back to initial rotation
-        groupRef.current.rotation.x = THREE.MathUtils.lerp(
-          simplifyAngle(groupRef.current.rotation.x),
-          INITIAL_ROTATION.x,
-          CONFIG.RESET_LERP_FACTOR
-        );
-
-        groupRef.current.rotation.y = THREE.MathUtils.lerp(
-          simplifyAngle(groupRef.current.rotation.y),
-          INITIAL_ROTATION.y,
-          CONFIG.RESET_LERP_FACTOR
-        );
-
-        groupRef.current.rotation.z = THREE.MathUtils.lerp(
-          simplifyAngle(groupRef.current.rotation.z),
-          INITIAL_ROTATION.z,
-          CONFIG.RESET_LERP_FACTOR
-        );
-      }
-    }
   });
 
   return {

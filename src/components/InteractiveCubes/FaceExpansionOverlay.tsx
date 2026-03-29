@@ -2,13 +2,14 @@
 import React, { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame, ThreeEvent } from "@react-three/fiber";
+import { FACE_IMAGE_SCALE } from "./config/constants";
 
 // Single cube face = 2 (BoxGeometry 2×2×2)
-// Full 3×3 rubik's face = (2.25 spacing × 2 + 2 half-widths) = 6.5
+// Full 3×3 rubik's face = (2.0 spacing × 2 + 2 half-widths) = 6.0
 const CUBE_FACE_SIZE = 2;
-const FULL_FACE_SIZE = 6.5;
-// Slightly outside the outermost face edge (3.25 + epsilon) to avoid z-fighting
-const FACE_NORMAL_OFFSET = 3.26;
+const FULL_FACE_SIZE = 6.0;
+// Slightly outside the outermost face edge (3.0 + epsilon) to avoid z-fighting
+const FACE_NORMAL_OFFSET = 3.01;
 
 // Per face-index: the rotation to orient a PlaneGeometry (default normal = +Z)
 // to face outward, plus which component index (0=x,1=y,2=z) is the normal axis.
@@ -27,6 +28,7 @@ interface FaceExpansionOverlayProps {
   faceIndex: number;
   texture: THREE.Texture;
   cubePosition: [number, number, number];
+  dismissed: boolean;
   onDismiss: () => void;
 }
 
@@ -34,6 +36,7 @@ export const FaceExpansionOverlay: React.FC<FaceExpansionOverlayProps> = ({
   faceIndex,
   texture,
   cubePosition,
+  dismissed,
   onDismiss,
 }) => {
   const meshRef     = useRef<THREE.Mesh>(null);
@@ -44,6 +47,17 @@ export const FaceExpansionOverlay: React.FC<FaceExpansionOverlayProps> = ({
 
   const cfg         = FACE_CFG[faceIndex];
   const normalValue = FACE_NORMAL_OFFSET * cfg.sign;
+
+  // The face texture has 5% padding baked in (image occupies UV [0.025, 0.975]).
+  // Clone and remap so the overlay shows the full image with no padding.
+  const overlayTexture = useMemo(() => {
+    const clone = texture.clone();
+    const offset = (1 - FACE_IMAGE_SCALE) / 2;
+    clone.repeat.set(FACE_IMAGE_SCALE, FACE_IMAGE_SCALE);
+    clone.offset.set(offset, offset);
+    clone.needsUpdate = true;
+    return clone;
+  }, [texture]);
 
   // Start position = the clicked cube face center (in DragRotator local space)
   const startPos = useMemo(() => {
@@ -69,6 +83,11 @@ export const FaceExpansionOverlay: React.FC<FaceExpansionOverlayProps> = ({
     const mesh = meshRef.current;
     const mat  = matRef.current;
     if (!mesh || !mat) return;
+
+    // React to external dismissed signal (e.g. new face clicked, outside click)
+    if (dismissed && !closingRef.current) {
+      closingRef.current = true;
+    }
 
     if (closingRef.current) {
       progressRef.current = Math.max(progressRef.current - delta * 4, 0);
@@ -104,7 +123,7 @@ export const FaceExpansionOverlay: React.FC<FaceExpansionOverlayProps> = ({
       <planeGeometry args={[1, 1]} />
       <meshBasicMaterial
         ref={matRef}
-        map={texture}
+        map={overlayTexture}
         transparent
         opacity={0}
         depthTest={false}

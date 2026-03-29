@@ -1,6 +1,7 @@
 import React from "react";
 import { useDragRotation } from "./hooks/useDragRotation";
 import {
+  CONFIG,
   SHARED_PLANE_HIT_GEOMETRY,
   INITIAL_ROTATION,
 } from "./config/constants";
@@ -10,10 +11,9 @@ import { useMinWidthLayout } from "@/hooks/useMinWidthLayout";
 interface DragRotatorProps {
   children: React.ReactNode;
   intensityRef: React.RefObject<number>;
-  disabled?: boolean;
 }
 
-export const DragRotator = ({ children, intensityRef, disabled = false }: DragRotatorProps) => {
+export const DragRotator = ({ children, intensityRef }: DragRotatorProps) => {
   // Use the custom hook
   const { groupRef, handlers } = useDragRotation(intensityRef);
   const { viewport } = useThree();
@@ -22,7 +22,7 @@ export const DragRotator = ({ children, intensityRef, disabled = false }: DragRo
   const parentGroupProps = React.useMemo(
     () => ({
       position: [0, 0, 0] as [number, number, number],
-      scale: isDesktop ? viewport.width * 0.035 : viewport.width * 0.075,
+      scale: isDesktop ? viewport.width * CONFIG.GRID_SCALE_DESKTOP : viewport.width * CONFIG.GRID_SCALE_MOBILE,
     }),
     [isDesktop, viewport]
   );
@@ -57,7 +57,7 @@ export const DragRotator = ({ children, intensityRef, disabled = false }: DragRo
       {/* Hit Plane */}
       {/* Invisible plane to capture pointer events for rotation. */}
       {/* Needs to be large enough to cover the interaction area. */}
-      <mesh {...(!disabled ? handlers : {})} {...planeMeshProps}>
+      <mesh {...handlers} {...planeMeshProps}>
         <meshBasicMaterial {...planeMaterialProps} />
       </mesh>
 
