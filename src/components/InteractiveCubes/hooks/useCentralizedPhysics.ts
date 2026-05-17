@@ -1,4 +1,4 @@
-import { useFrame } from "@react-three/fiber";
+import { useFrame, type RootState } from "@react-three/fiber";
 import * as THREE from "three";
 import { CONFIG } from "../config/constants";
 import { useRef, useCallback } from "react";

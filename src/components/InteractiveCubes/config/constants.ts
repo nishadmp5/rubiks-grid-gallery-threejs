@@ -21,6 +21,11 @@ export const CONFIG = {
   PULSE_SQUASH_SCALE: 0.95,
   PULSE_RECOVERY_SPEED: 10,
 
+  // INTRO WAVE (Staggered entrance)
+  INTRO_DELAY_FACTOR: 0.12,
+  INTRO_SPEED: 4,
+  INTRO_AMPLITUDE: 0.35,
+
   // GRID DISPLAY SIZE
   // Scale of the entire Rubiks grid relative to viewport width.
   // Increase to make the grid larger on screen.
